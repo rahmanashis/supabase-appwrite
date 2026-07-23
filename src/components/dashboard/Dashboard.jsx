@@ -9,7 +9,7 @@ import { SkeletonWebpage } from './SkeletonWebpage';
 import { EmptyState } from './EmptyState';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from '../ui/ErrorState';
-import { INITIAL_TODOS } from './initialTodos';
+import supabase from '../../utils/supabase';
 import './Dashboard.css';
 
 const PAGE_SIZE = 6;
@@ -27,28 +27,29 @@ export function Dashboard() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingTodo, setEditingTodo] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-    async function init() {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        if (!mounted) return;
-        setTodos(INITIAL_TODOS);
-        setVisibleCount(PAGE_SIZE);
-      } catch (err) {
-        if (mounted) setError(err.message || 'Failed to load dashboard.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
+    const { data, error: fetchError } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (fetchError) {
+      setTodos([]);
+      setError(fetchError.message || 'Failed to load tasks from Supabase.');
+    } else {
+      setTodos(data || []);
+      setVisibleCount(PAGE_SIZE);
     }
 
-    init();
-
-    return () => {
-      mounted = false;
-    };
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const filteredTodos = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -132,14 +133,8 @@ export function Dashboard() {
   }, []);
 
   const handleRetry = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    setTimeout(() => {
-      setTodos(INITIAL_TODOS);
-      setVisibleCount(PAGE_SIZE);
-      setLoading(false);
-    }, 600);
-  }, []);
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleCancelEdit = useCallback(() => setEditingTodo(null), []);
 
