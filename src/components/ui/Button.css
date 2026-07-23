@@ -1,0 +1,100 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  will-change: transform;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button--primary {
+  color: var(--text-on-primary);
+  background-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.button--primary:hover:not(:disabled) {
+  background-color: var(--accent-primary-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.button--primary:active:not(:disabled) {
+  background-color: var(--accent-primary-active);
+  transform: translateY(1px);
+}
+
+.button--secondary {
+  color: var(--text-primary);
+  background-color: var(--accent-secondary);
+  border-color: var(--border-default);
+}
+
+.button--secondary:hover:not(:disabled) {
+  background-color: var(--accent-secondary-hover);
+  border-color: var(--border-default);
+}
+
+.button--danger {
+  color: var(--text-on-primary);
+  background-color: var(--status-error);
+}
+
+.button--danger:hover:not(:disabled) {
+  background-color: var(--status-error);
+  filter: brightness(1.1);
+}
+
+.button--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.button--md {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+}
+
+.button--lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-lg);
+}
+
+.button__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.button__text--loading {
+  opacity: 0.8;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button__spinner {
+    animation: none;
+  }
+
+  .button {
+    transition: none;
+  }
+}
