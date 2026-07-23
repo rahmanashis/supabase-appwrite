@@ -53,7 +53,7 @@ export function Header() {
               </button>
             )}
             <span className="header__logo" aria-hidden="true" />
-            <h1 className="header__title">Backend Lab</h1>
+            <h1 className="header__title">Supabase-Aperite</h1>
           </div>
 
           {isAuthenticated && (

@@ -155,7 +155,8 @@ export function Dashboard() {
               Task Dashboard
             </h2>
             <p className="dashboard__subtitle">
-              {user?.email ? `Signed in as ${user.email}` : 'Organize your work one task at a time.'}
+              Host backend applications with Coolify on a VPS and manage them through React.
+              {user?.email && <span className="dashboard__user"> Signed in as {user.email}.</span>}
             </p>
           </div>
         </div>

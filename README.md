@@ -1,6 +1,6 @@
-# Task Dashboard
+# Supabase-Aperite
 
-A frontend-only React + Vite task dashboard with mock authentication and local in-memory task management.
+Host backend applications with Coolify on a VPS and manage them through a React application. The current frontend is a task dashboard prototype with mock authentication and local in-memory task management.
 
 ## Features
 
