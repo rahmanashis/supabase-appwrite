@@ -1,0 +1,23 @@
+{
+  "name": "supabase-appwrite",
+  "version": "1.0.0",
+  "description": "This is my **personal private playground repository** where I experiment with hosting backend applications on a VPS using **Coolify** and managing services through a **React application**.",
+  "homepage": "https://github.com/rahmanashis/supabase-appwrite#readme",
+  "bugs": {
+    "url": "https://github.com/rahmanashis/supabase-appwrite/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahmanashis/supabase-appwrite.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
