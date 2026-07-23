@@ -1,0 +1,16 @@
+.main {
+  flex: 1;
+  padding-block: var(--space-8);
+}
+
+.main__container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding-block: var(--space-10);
+  }
+}
