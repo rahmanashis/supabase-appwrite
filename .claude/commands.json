@@ -1,0 +1,19 @@
+{
+  "commands": [
+    {
+      "name": "status",
+      "description": "Show git status and branch info",
+      "prompt": "Run git status and git branch --show-current, then summarize the working tree state."
+    },
+    {
+      "name": "install",
+      "description": "Install npm dependencies",
+      "prompt": "Run npm install and report the result."
+    },
+    {
+      "name": "diagram",
+      "description": "Render a Mermaid diagram",
+      "prompt": "Read the requested .mmd file and render it as a Mermaid diagram if asked."
+    }
+  ]
+}

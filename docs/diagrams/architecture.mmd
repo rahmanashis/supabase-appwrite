@@ -1,0 +1,10 @@
+graph TD
+    A[Client App] --> B{API Layer}
+    B --> C[Supabase]
+    B --> D[Appwrite]
+    C --> E[(PostgreSQL)]
+    C --> F[Auth]
+    C --> G[Realtime]
+    D --> H[(Database)]
+    D --> I[Auth]
+    D --> J[Storage]
