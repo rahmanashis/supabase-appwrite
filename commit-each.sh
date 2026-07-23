@@ -16,28 +16,33 @@ trap 'rm -f "$TMP_FILE"' EXIT
 # 1. Collect modified files
 git diff --name-only >> "$TMP_FILE"
 
-# 2. Collect untracked files (excluding ignored files like node_modules and dist)
+# 2. Collect untracked files (excluding ignored files like node_modules, dist)
 git ls-files --others --exclude-standard >> "$TMP_FILE"
 
-# 3. Sort paths so directories come before their contents
+# 3. Sort so directories are grouped and files come in a logical order
 sort -t '/' -k1,1 -k2,2 "$TMP_FILE" | while IFS= read -r path; do
   [ -z "$path" ] && continue
-  [ -f "$path" ] || continue  # Git does not track empty directories
+  [ -f "$path" ] || continue  # Git cannot track empty directories
 
   echo "-----------------------------------"
   echo "Adding file: $path"
 
-  # Generate a commit message based on the file type
+  # Generate a commit message based on the file type and location
   msg="$path"
   case "$path" in
-    *.jsx)        msg="Add React component: $path" ;;
-    *.js)         msg="Add JavaScript module: $path" ;;
-    *.css)        msg="Add styles: $path" ;;
-    *.json)       msg="Update config: $path" ;;
-    *.md)         msg="Update docs: $path" ;;
-    *.sh)         msg="Add script: $path" ;;
-    *.html)       msg="Update HTML: $path" ;;
-    .claude/*)    msg="Update Claude config: $path" ;;
+    .env.example)              msg="Add environment variables template: $path" ;;
+    *.jsx)                     msg="Add React component: $path" ;;
+    *.js)                      msg="Update JavaScript module: $path" ;;
+    *.css)                     msg="Update styles: $path" ;;
+    *.md)                      msg="Update documentation: $path" ;;
+    package.json)              msg="Update project dependencies: $path" ;;
+    package-lock.json)         msg="Update package lockfile: $path" ;;
+    .claude/*)                 msg="Update Claude configuration: $path" ;;
+    docs/*)                    msg="Update docs: $path" ;;
+    src/lib/*)                 msg="Add library integration: $path" ;;
+    src/components/auth/*)     msg="Add authentication feature: $path" ;;
+    src/components/dashboard/*) msg="Add dashboard feature: $path" ;;
+    src/components/layout/*)   msg="Update layout component: $path" ;;
   esac
 
   git add "$path" && git commit -m "$msg" || echo "Skipped/empty: $path"
