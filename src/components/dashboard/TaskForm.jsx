@@ -46,14 +46,14 @@ export function TaskForm({ onSubmit, editingTodo, onCancel }) {
     e.preventDefault();
     if (!title.trim()) return;
     setIsLoading(true);
-    await onSubmit({
+    const succeeded = await onSubmit({
       title: title.trim(),
       description: description.trim(),
       image,
       existingImageUrl: imagePreview && !image ? imagePreview : null,
     });
     setIsLoading(false);
-    if (!editingTodo) reset();
+    if (succeeded && !editingTodo) reset();
   };
 
   const isEditing = Boolean(editingTodo);
