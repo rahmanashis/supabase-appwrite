@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      { "command": "git status" },
+      { "command": "git log --oneline -n *" },
+      { "command": "npm install" },
+      { "command": "npx *" },
+      { "command": "git diff" },
+      { "command": "git diff --stat" },
+      { "command": "git branch" },
+      { "command": "git remote -v" },
+      { "command": "node --version" },
+      { "command": "npm --version" }
+    ]
+  },
+  "hooks": {
+    "prePrompt": {
+      "commands": [
+        "git status --short"
+      ]
+    },
+    "postEdit": {
+      "commands": [
+        "git status --short"
+      ]
+    }
+  },
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
