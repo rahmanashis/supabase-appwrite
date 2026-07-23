@@ -1,0 +1,12 @@
+.service-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.service-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
