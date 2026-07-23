@@ -1,4 +1,5 @@
 import { Button } from '../ui/Button';
+import './LoadMoreButton.css';
 
 export function LoadMoreButton({ onClick, hasMore }) {
   if (!hasMore) return null;
