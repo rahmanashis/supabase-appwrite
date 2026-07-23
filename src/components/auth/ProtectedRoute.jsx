@@ -1,29 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 export function ProtectedRoute({ children }) {
-  const [session, setSession] = useState(undefined);
+  const { isAuthenticated } = useAuth();
+  const [ready, setReady] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setSession(data.session);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (mounted) setSession(newSession);
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
+    const timer = setTimeout(() => setReady(true), 300);
+    return () => clearTimeout(timer);
   }, []);
 
-  if (session === undefined) {
+  if (!ready) {
     return (
       <div className="auth-page">
         <div className="auth-card__icon" style={{ margin: 0 }}>
@@ -33,7 +22,7 @@ export function ProtectedRoute({ children }) {
     );
   }
 
-  if (!session) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -11,6 +11,13 @@ export function TaskForm({ onSubmit, editingTodo, onCancel }) {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const reset = useCallback(() => {
+    setTitle('');
+    setDescription('');
+    setImage(null);
+    setImagePreview(null);
+  }, []);
+
   useEffect(() => {
     if (editingTodo) {
       setTitle(editingTodo.title || '');
@@ -21,13 +28,6 @@ export function TaskForm({ onSubmit, editingTodo, onCancel }) {
       reset();
     }
   }, [editingTodo, reset]);
-
-  const reset = useCallback(() => {
-    setTitle('');
-    setDescription('');
-    setImage(null);
-    setImagePreview(null);
-  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];

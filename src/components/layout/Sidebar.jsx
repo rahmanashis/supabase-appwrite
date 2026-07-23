@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, LayoutDashboard, Layers, LogOut } from 'lucide-react';
+import { X, LayoutDashboard, LogOut } from 'lucide-react';
 import './Sidebar.css';
 
 export function Sidebar({ isOpen, onClose, onLogout, user }) {
@@ -53,10 +53,6 @@ export function Sidebar({ isOpen, onClose, onLogout, user }) {
           <a href="/dashboard" className="sidebar__link sidebar__link--active">
             <LayoutDashboard size={20} />
             <span>Dashboard</span>
-          </a>
-          <a href="/" className="sidebar__link">
-            <Layers size={20} />
-            <span>Services</span>
           </a>
         </nav>
 

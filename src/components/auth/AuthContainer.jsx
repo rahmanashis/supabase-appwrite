@@ -1,37 +1,25 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Auth } from './Auth';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { DEMO_USER } from '../../constants/demo';
 
 export function AuthContainer() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const mode = location.pathname === '/register' ? 'signup' : 'signin';
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleSubmit = useCallback(
-    async ({ email, password }) => {
+    async ({ email }) => {
       setIsLoading(true);
       setError(null);
 
       try {
         await new Promise((resolve) => setTimeout(resolve, 600));
-
-        if (mode === 'signin') {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (signInError) throw signInError;
-        } else {
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-          });
-          if (signUpError) throw signUpError;
-        }
-
+        login(email || DEMO_USER.email);
         navigate('/dashboard', { replace: true });
       } catch (err) {
         setError(err.message || 'Authentication failed. Please try again.');
@@ -39,7 +27,7 @@ export function AuthContainer() {
         setIsLoading(false);
       }
     },
-    [mode, navigate]
+    [login, navigate]
   );
 
   return <Auth mode={mode === 'signin' ? 'signin' : 'signup'} onSubmit={handleSubmit} isLoading={isLoading} error={error} />;
