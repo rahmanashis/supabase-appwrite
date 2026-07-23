@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { TaskForm } from './TaskForm';
@@ -12,10 +12,39 @@ import { ErrorState } from '../ui/ErrorState';
 import supabase from '../../utils/supabase';
 import './Dashboard.css';
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 3;
+const SEARCH_DEBOUNCE_MS = 350;
+const TASK_IMAGE_BUCKET = 'task-images';
 
-function generateId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+function createImagePath(file, userId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const uniqueName = crypto.randomUUID();
+  return `${userId || 'public'}/${uniqueName}-${safeName}`;
+}
+
+async function uploadTaskImage(file, userId) {
+  const path = createImagePath(file, userId);
+  const { error: uploadError } = await supabase.storage
+    .from(TASK_IMAGE_BUCKET)
+    .upload(path, file, { cacheControl: '3600', upsert: false });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from(TASK_IMAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function getTaskImagePath(imageUrl) {
+  if (!imageUrl) return null;
+  const marker = `/storage/v1/object/public/${TASK_IMAGE_BUCKET}/`;
+  const markerIndex = imageUrl.indexOf(marker);
+  return markerIndex === -1 ? null : decodeURIComponent(imageUrl.slice(markerIndex + marker.length));
+}
+
+async function removeTaskImage(imageUrl) {
+  const path = getTaskImagePath(imageUrl);
+  if (!path) return;
+  await supabase.storage.from(TASK_IMAGE_BUCKET).remove([path]);
 }
 
 export function Dashboard() {
@@ -24,117 +53,160 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [totalCount, setTotalCount] = useState(0);
   const [editingTodo, setEditingTodo] = useState(null);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (currentSearch = '', currentLimit = PAGE_SIZE) => {
     setLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(0, currentLimit - 1);
+
+    const normalizedSearch = currentSearch.trim();
+    if (normalizedSearch) {
+      const escapedSearch = normalizedSearch.replace(/[,%()]/g, '');
+      query = query.or(
+        `title.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%`
+      );
+    }
+
+    const { data, count, error: fetchError } = await query;
 
     if (fetchError) {
       setTodos([]);
+      setTotalCount(0);
       setError(fetchError.message || 'Failed to load tasks from Supabase.');
     } else {
       setTodos(data || []);
-      setVisibleCount(PAGE_SIZE);
+      setTotalCount(count || 0);
     }
 
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setVisibleCount(PAGE_SIZE);
+    }, SEARCH_DEBOUNCE_MS);
 
-  const filteredTodos = useMemo(() => {
-    const query = search.toLowerCase().trim();
-    if (!query) return todos;
-    return todos.filter(
-      (todo) =>
-        todo.title.toLowerCase().includes(query) ||
-        (todo.description && todo.description.toLowerCase().includes(query))
-    );
-  }, [todos, search]);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const visibleTodos = useMemo(() => filteredTodos.slice(0, visibleCount), [filteredTodos, visibleCount]);
-  const hasMore = visibleCount < filteredTodos.length;
+  useEffect(() => {
+    fetchTasks(debouncedSearch, visibleCount);
+  }, [debouncedSearch, fetchTasks, visibleCount]);
+
+  const hasMore = todos.length < totalCount;
 
   const handleSearchChange = useCallback((value) => {
     setSearch(value);
-    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((currentCount) => currentCount + PAGE_SIZE);
   }, []);
 
   const handleAdd = useCallback(
-    ({ title, description, image, existingImageUrl }) => {
+    async ({ title, description, image }) => {
+      setError(null);
+      let imageUrl = null;
+
       try {
-        let imageUrl = existingImageUrl || null;
         if (image) {
-          imageUrl = URL.createObjectURL(image);
+          imageUrl = await uploadTaskImage(image, user?.id);
         }
-        const newTodo = {
-          id: generateId(),
-          title,
-          description,
-          image_url: imageUrl,
-          created_at: new Date().toISOString(),
-        };
-        setTodos((prev) => [newTodo, ...prev]);
+
+        const { error: insertError } = await supabase
+          .from('tasks')
+          .insert({ title, description, image_url: imageUrl });
+
+        if (insertError) throw insertError;
+
         setVisibleCount(PAGE_SIZE);
+        await fetchTasks(debouncedSearch, PAGE_SIZE);
+        return true;
       } catch (err) {
+        if (imageUrl) await removeTaskImage(imageUrl);
         setError(err.message || 'Failed to add task.');
+        return false;
       }
     },
-    []
+    [debouncedSearch, fetchTasks, user?.id]
   );
 
   const handleEdit = useCallback(
-    ({ title, description, image, existingImageUrl }) => {
+    async ({ title, description, image, existingImageUrl }) => {
+      if (!editingTodo) return false;
+
+      setError(null);
+      const previousImageUrl = editingTodo.image_url || null;
+      let imageUrl = existingImageUrl || null;
+      let uploadedImageUrl = null;
+
       try {
-        if (!editingTodo) return;
-        let imageUrl = existingImageUrl || null;
         if (image) {
-          if (editingTodo.image_url && editingTodo.image_url.startsWith('blob:')) {
-            URL.revokeObjectURL(editingTodo.image_url);
-          }
-          imageUrl = URL.createObjectURL(image);
+          uploadedImageUrl = await uploadTaskImage(image, user?.id);
+          imageUrl = uploadedImageUrl;
         }
-        setTodos((prev) =>
-          prev.map((todo) =>
-            todo.id === editingTodo.id
-              ? { ...todo, title, description, image_url: imageUrl }
-              : todo
-          )
-        );
+
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({ title, description, image_url: imageUrl })
+          .eq('id', editingTodo.id);
+
+        if (updateError) throw updateError;
+
         setEditingTodo(null);
+        await fetchTasks(debouncedSearch, visibleCount);
+
+        if (previousImageUrl && previousImageUrl !== imageUrl) {
+          await removeTaskImage(previousImageUrl);
+        }
+
+        return true;
       } catch (err) {
+        if (uploadedImageUrl) await removeTaskImage(uploadedImageUrl);
         setError(err.message || 'Failed to update task.');
+        return false;
       }
     },
-    [editingTodo]
+    [debouncedSearch, editingTodo, fetchTasks, user?.id, visibleCount]
   );
 
-  const handleDelete = useCallback((id) => {
-    try {
-      setTodos((prev) => {
-        const todo = prev.find((t) => t.id === id);
-        if (todo?.image_url && todo.image_url.startsWith('blob:')) {
-          URL.revokeObjectURL(todo.image_url);
-        }
-        return prev.filter((t) => t.id !== id);
-      });
-    } catch (err) {
-      setError(err.message || 'Failed to delete task.');
-    }
-  }, []);
+  const handleDelete = useCallback(
+    async (id) => {
+      setError(null);
+      const task = todos.find((todo) => todo.id === id);
+
+      try {
+        const { error: deleteError } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', id)
+          .select('id')
+          .single();
+        if (deleteError) throw deleteError;
+
+        if (editingTodo?.id === id) setEditingTodo(null);
+        await fetchTasks(debouncedSearch, visibleCount);
+        if (task?.image_url) await removeTaskImage(task.image_url);
+      } catch (err) {
+        setError(err.message || 'Failed to delete task.');
+      }
+    },
+    [debouncedSearch, editingTodo?.id, fetchTasks, todos, visibleCount]
+  );
 
   const handleRetry = useCallback(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    fetchTasks(debouncedSearch, visibleCount);
+  }, [debouncedSearch, fetchTasks, visibleCount]);
 
   const handleCancelEdit = useCallback(() => setEditingTodo(null), []);
 
@@ -171,16 +243,16 @@ export function Dashboard() {
 
           {loading ? (
             <LoadingState />
-          ) : filteredTodos.length === 0 ? (
-            <EmptyState query={search} />
+          ) : todos.length === 0 ? (
+            <EmptyState query={debouncedSearch} />
           ) : (
             <>
               <div className="dashboard__grid">
-                {visibleTodos.map((todo) => (
+                {todos.map((todo) => (
                   <TaskCard key={todo.id} todo={todo} onEdit={setEditingTodo} onDelete={handleDelete} />
                 ))}
               </div>
-              <LoadMoreButton onClick={() => setVisibleCount((c) => c + PAGE_SIZE)} hasMore={hasMore} />
+              <LoadMoreButton onClick={handleLoadMore} hasMore={hasMore} />
             </>
           )}
         </div>
