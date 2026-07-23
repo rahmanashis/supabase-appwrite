@@ -1,10 +1,12 @@
 graph TD
-    A[Client App] --> B{API Layer}
-    B --> C[Supabase]
-    B --> D[Appwrite]
-    C --> E[(PostgreSQL)]
-    C --> F[Auth]
-    C --> G[Realtime]
-    D --> H[(Database)]
-    D --> I[Auth]
-    D --> J[Storage]
+    A[React + Vite App] --> B[Auth Provider]
+    B --> C{Authenticated?}
+    C -->|No| D[Login or Register]
+    C -->|Yes| E[Task Dashboard]
+    E --> F[Initial Dummy Tasks]
+    E --> G[Local React State]
+    G --> H[Add / Edit / Delete]
+    G --> I[Search]
+    G --> J[Load More Pagination]
+    G --> K[Local Image Preview]
+    B --> L[localStorage Demo Session]
