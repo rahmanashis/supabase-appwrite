@@ -37,7 +37,7 @@ export function Sidebar({ isOpen, onClose, onLogout, user }) {
         <div className="sidebar__header">
           <div className="sidebar__brand">
             <span className="sidebar__logo" aria-hidden="true" />
-            <span className="sidebar__title">Backend Lab</span>
+            <span className="sidebar__title">Supabase-Aperite</span>
           </div>
           <button className="sidebar__close" onClick={onClose} aria-label="Close menu">
             <X size={22} />
