@@ -1,34 +1,70 @@
-import { useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import supabase from '../../utils/supabase';
 import { Auth } from './Auth';
-import { useAuth } from '../../hooks/useAuth';
-import { DEMO_USER } from '../../constants/demo';
 
 export function AuthContainer() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
   const mode = location.pathname === '/register' ? 'signup' : 'signin';
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleSubmit = useCallback(
-    async ({ email }) => {
+    async ({ email, password }) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        login(email || DEMO_USER.email);
-        navigate('/dashboard', { replace: true });
+        if (mode === 'signin') {
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInError) throw signInError;
+          if (!data.session) throw new Error('Sign in succeeded but no session was returned.');
+
+          const destination = location.state?.from?.pathname || '/dashboard';
+          navigate(destination, { replace: true });
+        } else {
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+          });
+
+          if (signUpError) throw signUpError;
+          if (!data.user) throw new Error('Supabase did not return a new user.');
+
+          if (data.session) {
+            const destination = location.state?.from?.pathname || '/dashboard';
+            navigate(destination, { replace: true });
+          } else {
+            navigate('/login', {
+              replace: true,
+              state: {
+                message: 'Account created. Check your email to confirm it, then sign in.',
+              },
+            });
+          }
+        }
       } catch (err) {
+        console.error(`Supabase ${mode} error:`, err);
         setError(err.message || 'Authentication failed. Please try again.');
       } finally {
         setIsLoading(false);
       }
     },
-    [login, navigate]
+    [location.state, mode, navigate]
   );
 
-  return <Auth mode={mode === 'signin' ? 'signin' : 'signup'} onSubmit={handleSubmit} isLoading={isLoading} error={error} />;
+  return (
+    <Auth
+      mode={mode}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      error={error}
+      message={location.state?.message}
+    />
+  );
 }
