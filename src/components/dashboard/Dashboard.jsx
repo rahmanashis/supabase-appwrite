@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { TaskForm } from './TaskForm';
@@ -19,10 +19,12 @@ const TASK_IMAGE_BUCKET = 'task-images';
 function createImagePath(file, userId) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
   const uniqueName = crypto.randomUUID();
-  return `${userId || 'public'}/${uniqueName}-${safeName}`;
+  return `${userId}/${uniqueName}-${safeName}`;
 }
 
 async function uploadTaskImage(file, userId) {
+  if (!userId) throw new Error('You must be signed in to upload task images.');
+
   const path = createImagePath(file, userId);
   const { error: uploadError } = await supabase.storage
     .from(TASK_IMAGE_BUCKET)
@@ -57,38 +59,63 @@ export function Dashboard() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [totalCount, setTotalCount] = useState(0);
   const [editingTodo, setEditingTodo] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const requestSequence = useRef(0);
 
-  const fetchTasks = useCallback(async (currentSearch = '', currentLimit = PAGE_SIZE) => {
-    setLoading(true);
-    setError(null);
+  const fetchTasks = useCallback(
+    async (currentSearch = '', currentLimit = PAGE_SIZE) => {
+      const requestId = ++requestSequence.current;
 
-    let query = supabase
-      .from('tasks')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(0, currentLimit - 1);
+      if (!user?.id) {
+        setTodos([]);
+        setTotalCount(0);
+        setError(null);
+        setLoading(false);
+        return;
+      }
 
-    const normalizedSearch = currentSearch.trim();
-    if (normalizedSearch) {
+      setLoading(true);
+      setError(null);
+
+      let query = supabase
+        .from('tasks')
+        .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(0, currentLimit - 1);
+
+      const normalizedSearch = currentSearch.trim();
       const escapedSearch = normalizedSearch.replace(/[,%()]/g, '');
-      query = query.or(
-        `title.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%`
-      );
-    }
+      if (escapedSearch) {
+        query = query.or(
+          `title.ilike.%${escapedSearch}%,description.ilike.%${escapedSearch}%`
+        );
+      }
 
-    const { data, count, error: fetchError } = await query;
+      const { data, count, error: fetchError } = await query;
+      if (requestId !== requestSequence.current) return;
 
-    if (fetchError) {
-      setTodos([]);
-      setTotalCount(0);
-      setError(fetchError.message || 'Failed to load tasks from Supabase.');
-    } else {
-      setTodos(data || []);
-      setTotalCount(count || 0);
-    }
+      if (fetchError) {
+        setTodos([]);
+        setTotalCount(0);
+        setError(fetchError.message || 'Failed to load tasks from Supabase.');
+      } else {
+        setTodos(data || []);
+        setTotalCount(count || 0);
+      }
 
-    setLoading(false);
-  }, []);
+      setLoading(false);
+    },
+    [user?.id]
+  );
+
+  useEffect(() => {
+    requestSequence.current += 1;
+    setTodos([]);
+    setTotalCount(0);
+    setEditingTodo(null);
+    setVisibleCount(PAGE_SIZE);
+  }, [user?.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -101,7 +128,7 @@ export function Dashboard() {
 
   useEffect(() => {
     fetchTasks(debouncedSearch, visibleCount);
-  }, [debouncedSearch, fetchTasks, visibleCount]);
+  }, [debouncedSearch, fetchTasks, refreshKey, visibleCount]);
 
   const hasMore = todos.length < totalCount;
 
@@ -115,22 +142,27 @@ export function Dashboard() {
 
   const handleAdd = useCallback(
     async ({ title, description, image }) => {
+      if (!user?.id) {
+        setError('You must be signed in to add a task.');
+        return false;
+      }
+
       setError(null);
       let imageUrl = null;
 
       try {
         if (image) {
-          imageUrl = await uploadTaskImage(image, user?.id);
+          imageUrl = await uploadTaskImage(image, user.id);
         }
 
         const { error: insertError } = await supabase
           .from('tasks')
-          .insert({ title, description, image_url: imageUrl });
+          .insert({ title, description, image_url: imageUrl, user_id: user.id });
 
         if (insertError) throw insertError;
 
         setVisibleCount(PAGE_SIZE);
-        await fetchTasks(debouncedSearch, PAGE_SIZE);
+        setRefreshKey((currentKey) => currentKey + 1);
         return true;
       } catch (err) {
         if (imageUrl) await removeTaskImage(imageUrl);
@@ -138,12 +170,12 @@ export function Dashboard() {
         return false;
       }
     },
-    [debouncedSearch, fetchTasks, user?.id]
+    [user?.id]
   );
 
   const handleEdit = useCallback(
     async ({ title, description, image, existingImageUrl }) => {
-      if (!editingTodo) return false;
+      if (!editingTodo || !user?.id) return false;
 
       setError(null);
       const previousImageUrl = editingTodo.image_url || null;
@@ -152,19 +184,22 @@ export function Dashboard() {
 
       try {
         if (image) {
-          uploadedImageUrl = await uploadTaskImage(image, user?.id);
+          uploadedImageUrl = await uploadTaskImage(image, user.id);
           imageUrl = uploadedImageUrl;
         }
 
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ title, description, image_url: imageUrl })
-          .eq('id', editingTodo.id);
+          .eq('id', editingTodo.id)
+          .eq('user_id', user.id)
+          .select('id')
+          .single();
 
         if (updateError) throw updateError;
 
         setEditingTodo(null);
-        await fetchTasks(debouncedSearch, visibleCount);
+        setRefreshKey((currentKey) => currentKey + 1);
 
         if (previousImageUrl && previousImageUrl !== imageUrl) {
           await removeTaskImage(previousImageUrl);
@@ -177,11 +212,13 @@ export function Dashboard() {
         return false;
       }
     },
-    [debouncedSearch, editingTodo, fetchTasks, user?.id, visibleCount]
+    [editingTodo, user?.id]
   );
 
   const handleDelete = useCallback(
     async (id) => {
+      if (!user?.id) return;
+
       setError(null);
       const task = todos.find((todo) => todo.id === id);
 
@@ -190,23 +227,24 @@ export function Dashboard() {
           .from('tasks')
           .delete()
           .eq('id', id)
+          .eq('user_id', user.id)
           .select('id')
           .single();
         if (deleteError) throw deleteError;
 
         if (editingTodo?.id === id) setEditingTodo(null);
-        await fetchTasks(debouncedSearch, visibleCount);
+        setRefreshKey((currentKey) => currentKey + 1);
         if (task?.image_url) await removeTaskImage(task.image_url);
       } catch (err) {
         setError(err.message || 'Failed to delete task.');
       }
     },
-    [debouncedSearch, editingTodo?.id, fetchTasks, todos, visibleCount]
+    [editingTodo?.id, todos, user?.id]
   );
 
   const handleRetry = useCallback(() => {
-    fetchTasks(debouncedSearch, visibleCount);
-  }, [debouncedSearch, fetchTasks, visibleCount]);
+    setRefreshKey((currentKey) => currentKey + 1);
+  }, []);
 
   const handleCancelEdit = useCallback(() => setEditingTodo(null), []);
 
@@ -252,7 +290,7 @@ export function Dashboard() {
                   <TaskCard key={todo.id} todo={todo} onEdit={setEditingTodo} onDelete={handleDelete} />
                 ))}
               </div>
-              <LoadMoreButton onClick={handleLoadMore} hasMore={hasMore} />
+              <LoadMoreButton onClick={handleLoadMore} hasMore={hasMore} isLoading={loading} />
             </>
           )}
         </div>

@@ -1,12 +1,15 @@
 graph TD
     A[React + Vite App] --> B[Auth Provider]
-    B --> C{Authenticated?}
-    C -->|No| D[Login or Register]
-    C -->|Yes| E[Task Dashboard]
-    E --> F[Initial Dummy Tasks]
-    E --> G[Local React State]
-    G --> H[Add / Edit / Delete]
-    G --> I[Search]
-    G --> J[Load More Pagination]
-    G --> K[Local Image Preview]
-    B --> L[localStorage Demo Session]
+    B --> C[Supabase Auth Session]
+    C --> D{Authenticated?}
+    D -->|No| E[Login or Register]
+    E --> F[Supabase Email Password Auth]
+    F --> C
+    D -->|Yes| G[Task Dashboard]
+    G --> H[Supabase tasks table]
+    H --> I[RLS: auth.uid equals user_id]
+    G --> J[Add / Edit / Delete]
+    G --> K[Debounced Search]
+    G --> L[Load More Pagination PAGE_SIZE 3]
+    G --> M[task-images Storage Bucket]
+    M --> N[User Folder Policies]

@@ -31,9 +31,13 @@ export function Header() {
     return () => ctx.revert();
   }, [reducedMotion]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Supabase logout error:', err);
+    }
   };
 
   return (

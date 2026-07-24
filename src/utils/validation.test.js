@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { validateService, isValidUrl } from './validation';
+import {
+  validateService,
+  isValidUrl,
+  isValidEmail,
+  isValidPassword,
+  validateAuth,
+} from './validation';
 
 describe('isValidUrl', () => {
   it('accepts valid http and https URLs', () => {
@@ -37,5 +43,37 @@ describe('validateService', () => {
       url: 'invalid-url',
     });
     expect(errors.url).toBeDefined();
+  });
+});
+
+describe('auth validation', () => {
+  it('validates email addresses', () => {
+    expect(isValidEmail('person@example.com')).toBe(true);
+    expect(isValidEmail('person@example')).toBe(false);
+  });
+
+  it('requires passwords to be at least 6 characters', () => {
+    expect(isValidPassword('secret')).toBe(true);
+    expect(isValidPassword('short')).toBe(false);
+  });
+
+  it('returns no errors for valid sign in data', () => {
+    const errors = validateAuth({
+      email: 'person@example.com',
+      password: 'secret123',
+      confirmPassword: undefined,
+    });
+
+    expect(Object.keys(errors)).toHaveLength(0);
+  });
+
+  it('requires matching confirmation for sign up data', () => {
+    const errors = validateAuth({
+      email: 'person@example.com',
+      password: 'secret123',
+      confirmPassword: 'different',
+    });
+
+    expect(errors.confirmPassword).toBe('Passwords do not match.');
   });
 });

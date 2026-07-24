@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { validateAuth } from '../../utils/validation';
 import './Auth.css';
 
-export function Auth({ mode = 'signin', onSubmit, isLoading = false, error = null }) {
+export function Auth({ mode = 'signin', onSubmit, isLoading = false, error = null, message = null }) {
   const isSignIn = mode === 'signin';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,6 +81,12 @@ export function Auth({ mode = 'signin', onSubmit, isLoading = false, error = nul
             />
           )}
 
+          {message && !error && (
+            <div className="auth-card__message" role="status">
+              {message}
+            </div>
+          )}
+
           {error && (
             <div className="auth-card__error" role="alert">
               {error}
@@ -93,9 +100,9 @@ export function Auth({ mode = 'signin', onSubmit, isLoading = false, error = nul
 
         <p className="auth-card__footer">
           {altText}{' '}
-          <a href={altHref} className="auth-card__link">
+          <Link to={altHref} className="auth-card__link">
             {altAction}
-          </a>
+          </Link>
         </p>
       </div>
     </div>
