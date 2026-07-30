@@ -1,9 +1,36 @@
 {
   "name": "supabase-appwrite",
-  "private": true,
   "version": "1.0.0",
-  "description": "A personal private playground repository for experimenting with self-hosted backend services via Coolify, managed through a React + Vite control panel.",
+  "private": false,
+  "description": "A React + Vite dashboard for experimenting with self-hosted backend services including Supabase, Appwrite, and Coolify deployments.",
   "type": "module",
+  "homepage": "https://github.com/rahmanashis/supabase-appwrite",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahmanashis/supabase-appwrite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rahmanashis/supabase-appwrite/issues"
+  },
+  "author": {
+    "name": "Ashis Rahman",
+    "url": "https://github.com/rahmanashis"
+  },
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "vite",
+    "supabase",
+    "appwrite",
+    "coolify",
+    "dashboard",
+    "self-hosted",
+    "backend",
+    "postgres",
+    "authentication",
+    "cloud",
+    "devops"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -35,10 +62,8 @@
     "vite": "^6.0.5",
     "vitest": "^2.1.8"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rahmanashis/supabase-appwrite.git"
-  },
-  "author": "rahmanashis01",
-  "license": "ISC"
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  }
 }
